@@ -7,7 +7,6 @@
   <b>— Binning it! —</b><br>
   <sub>Interactive Weight of Evidence Binning Tool for Credit Risk Modeling</sub>
 </p>
-
 ---
 
 ## 📖 项目介绍
