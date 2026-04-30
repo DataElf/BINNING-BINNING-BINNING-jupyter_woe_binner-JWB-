@@ -1,6 +1,6 @@
 <img width="848" height="618" alt="imgs_binning_logo" src="https://github.com/user-attachments/assets/6038bea4-df60-40c2-8958-f6a71951c8a7" />
 
-# Jupyter_WoE_Binner(JWB) — Interactive WOE Binning Tool for Jupyter 
+# Jupyter_WoE_Binner(JWB) — Interactive WOE Binning Tool for Jupyter
 
 ---
 
@@ -19,8 +19,10 @@
 - 📊 **实时预览** Distribution、Bad Rate、WOE 三图联动
 - 🚀 **合并提示** 支持表格中提示合并分箱，智能且方便处理合并
 - 🧠 **智能分裂** 基于最优 IV 的决策树算法自动寻找最佳分裂点
+- 💥 **BOOM! 爆炸分裂** 一键按百分位强制分裂至最多分箱，快速探索最优分箱结构
 - 📋 **表格联动** 柱状图，线图，双向柱状图，表单，变动一目了然
 - 🔄 **变量切换** 支持批量变量分箱，Next/Last 快速导航
+- 🛡️ **最小占比限制** `min_split_pct` 参数防止分裂后出现占比过低的箱
 
 ---
 
@@ -64,7 +66,7 @@ pip install -e .
 <img width="1116" height="584" alt="ae18e101-1c6b-421b-a888-41a62f3c99d7" src="https://github.com/user-attachments/assets/aaaa4e13-1e5f-4ea3-94b2-ebb6949b588a" />
 
 
-### 单变量分箱
+### 1. 单变量分箱
 
 ```python
 import pandas as pd
@@ -108,8 +110,9 @@ widget.display()
 | 操作 | 方式 |
 |------|------|
 | 选择箱子 | 在 Select 多选框中按住 Ctrl 点击，或点击图表柱子 |
-| 合并两个相邻箱 | 选中两个箱 → 点击 **⬌ Merge** 或按 `Ctrl+⇧W` |
-| 分裂一个箱 | 选中一个箱 → 点击 **⬍ Split** 或按 `Ctrl+⇧Q` |
+| 合并连续箱 | 选中 2 个或以上连续箱 → 点击 **⬌ Merge** 或按 `Ctrl+⇧W` |
+| IV 最优分裂 | 选中 1 个箱 → 点击 **⬍ Split** 或按 `Ctrl+⇧Q` |
+| 💥 BOOM! 爆炸分裂 | 选中 1 个箱 → 点击 **💥 BOOM!** 或按 `Ctrl+⇧B` |
 | 确认分箱 | 点击 **✓ Confirm** |
 | 重置 | 点击 **↺ Reset** |
 
@@ -120,9 +123,9 @@ widget.bins
 # [-inf, 50000.0, 100000.0, 150000.0, inf]
 ```
 
-### 单变量分箱（含特殊值）
+### 2. 单变量分箱（含特殊值 + 最小箱占比限制）
 
-在信用风控中，数据常包含特殊值（如 -99999 代表缺失，-99998 代表未知），需要单独分箱计算 WOE：
+在信用风控中，数据常包含特殊值（如 -99999 代表缺失，-99998 代表未知），需要单独分箱计算 WOE。同时可通过 `min_split_pct` 限制分裂后最小箱占比，防止出现过小的箱：
 
 ```python
 # 模拟特殊值
@@ -130,12 +133,14 @@ df_spc = df.copy()
 df_spc.loc[np.random.choice(n, 80, replace=False), 'adj_finance_amt'] = -99999
 df_spc.loc[np.random.choice(n, 50, replace=False), 'adj_finance_amt'] = -99998
 
+# min_split_pct=0.05: 分裂后每个箱至少占比 5%
 widget_spc = BinningWidget(df_spc, var_name='adj_finance_amt',
                            target_name='target',
                            event_flag=1,
                            non_event_flag=0,
                            max_bins=6,
-                           spc_values=[-99999, -99998])
+                           spc_values=[-99999, -99998],
+                           min_split_pct=0.05)
 widget_spc.display()
 ```
 
@@ -148,12 +153,15 @@ widget_spc.display()
 | 合并/分裂 | 特殊值箱不可合并/拆分 |
 | IV 计算 | 总 IV = 正常箱 IV + 特殊值箱 IV |
 
-```python
-widget_spc.bins
-# [-inf, 50000.0, 100000.0, inf]
-```
+**min_split_pct 参数：**
 
-### 多变量批量分箱
+| 参数 | 说明 |
+|------|------|
+| `min_split_pct=0.0` | 默认值，不限制最小箱占比 |
+| `min_split_pct=0.02` | 分裂后每个箱至少占比 2%（推荐） |
+| `min_split_pct=0.05` | 分裂后每个箱至少占比 5%（保守） |
+
+### 3. 多变量批量分箱
 
 ```python
 widget_list = BinningWidgetList(df,
@@ -185,7 +193,7 @@ widget_list.bins
 # }
 ```
 
-### 多变量批量分箱（含特殊值）
+### 4. 多变量批量分箱（含特殊值 + 最小箱占比限制）
 
 ```python
 df_spc2 = df.copy()
@@ -199,7 +207,8 @@ widget_list_spc = BinningWidgetList(df_spc2,
     event_flag=1,
     non_event_flag=0,
     max_bins=6,
-    spc_values=[-99999, -99998])
+    spc_values=[-99999, -99998],
+    min_split_pct=0.02)
 widget_list_spc.display()
 ```
 
@@ -216,6 +225,67 @@ widget_list_spc.bins
 
 ---
 
+## 💥 BOOM! 爆炸分裂模式
+
+### 什么是 BOOM! 模式？
+
+BOOM! 是一种**快速强制分裂模式**，选中一个箱后，按 1% 百分位间隔将箱一次性分裂为最多 99 个子箱。与传统 IV 最优分裂（每次只分裂一个点、需要反复操作）不同，BOOM! 模式**一步到位**，快速探索数据的最优分箱结构。
+
+### 为什么需要 BOOM!？
+
+| 痛点 | BOOM! 解决方案 |
+|------|---------------|
+| 传统 Split 每次只能分裂一个点，操作繁琐 | 一次性生成所有候选分裂点 |
+| 不知道最优分箱数量 | 先 BOOM! 细分，再 Merge 合并，快速收敛 |
+| IV 最优分裂可能陷入局部最优 | 百分位分裂提供全局视角 |
+| 分裂等待时间长 | 只计算一次 WOE，过滤无效边界，速度极快 |
+
+### 使用方式
+
+1. 选中一个箱
+2. 点击 **💥 BOOM!** 按钮或按 `Ctrl+⇧B`
+3. 系统自动按 1%~99% 百分位生成 99 个候选分裂点
+4. 过滤掉占比 < 1% 的无效箱
+5. 一次性插入所有有效边界
+
+### 推荐工作流
+
+```
+BOOM! 细分 → Merge 合并 → 精调完成
+```
+
+1. **BOOM!**：将粗箱快速细分为多个小箱
+2. **Merge**：选中 WOE 相近的连续箱，合并为一个箱
+3. 重复 1-2 直到分箱结构满意
+
+### 示例
+
+```python
+# 先用少量初始箱
+widget = BinningWidget(df, var_name='adj_finance_amt',
+                       target_name='target',
+                       max_bins=3)  # 只分 3 个粗箱
+widget.display()
+
+# 操作步骤：
+# 1. 选中中间的箱 → 点击 💥 BOOM! → 瞬间分裂为几十个细箱
+# 2. 观察 WOE 图，选中 WOE 相近的连续箱 → 点击 ⬌ Merge 合并
+# 3. 重复合并直到满意
+```
+
+### BOOM! vs Split 对比
+
+| 特性 | ⬍ Split | 💥 BOOM! |
+|------|---------|----------|
+| 分裂策略 | IV 最优（贪心） | 百分位强制（1%间隔） |
+| 每次分裂数量 | 1 个边界 | 最多 99 个边界 |
+| 最小箱占比 | 受 `min_split_pct` 控制 | 固定 1% |
+| 适用场景 | 精调、微调 | 快速探索、粗到细 |
+| 快捷键 | `Ctrl+⇧Q` | `Ctrl+⇧B` |
+| 速度 | 较慢（遍历所有唯一值） | 极快（只计算百分位） |
+
+---
+
 ## 🔧 技术说明
 
 ### 交互技术栈
@@ -224,22 +294,26 @@ widget_list_spc.bins
 |------|------|
 | **ipywidgets** | Jupyter 内嵌交互控件（按钮、多选框、输出区域） |
 | **plotly FigureWidget** | 可交互图表，支持点击事件绑定和实时数据更新 |
-| **ipyevents** | DOM 事件监听，实现键盘快捷键（Ctrl+Shift+W/Q） |
+| **ipyevents** | DOM 事件监听，实现键盘快捷键（Ctrl+⇧W/Q/B） |
 | **pandas Styler** | 表格内嵌柱状图（%Total、WOE 双向柱状图） |
 
 ### 核心交互机制
 
 1. **图表点击选中**：通过 `FigureWidget.data[i].on_click()` 绑定点击事件，点击柱子切换选中状态，`selectedpoints` 属性高亮显示选中箱
 
-2. **智能分裂算法**：遍历箱内所有唯一值作为候选分裂点，计算每个分裂点的总 IV 值，选择使 IV 最大化的分裂点。若所有分裂点的 IV 均不大于当前 IV，则提示不可分裂
+2. **多箱连续合并**：选中 2 个或以上连续箱，一次性删除所有内部边界，支持任意数量的连续箱合并
 
-3. **图表重建**：合并/分裂后箱数变化，完全重建 `FigureWidget` 并替换 UI 中的旧图表，确保子图标题、坐标轴等正确更新
+3. **IV 最优分裂 + min_split_pct**：遍历箱内所有唯一值作为候选分裂点，计算每个分裂点的总 IV 值，选择使 IV 最大化的分裂点。同时校验分裂后左右两箱的样本数是否 ≥ `total_n × min_split_pct`，防止出现过小的箱
 
-4. **键盘快捷键**：通过 `ipyevents.Event` 监听 `keydown` 事件，绑定到整个 UI 容器（而非独立 VBox），确保事件能被正确捕获
+4. **BOOM! 爆炸分裂**：按 1%~99% 百分位生成 99 个候选分裂点，一次性全部插入，然后计算一次 WOE/IV，过滤掉占比 < 1% 的无效箱，只保留有效边界
 
-5. **多变量导航**：`BinningWidgetList` 为每个变量维护独立的 `BinningWidget` 实例，通过替换 `_content.children` 实现变量切换，各变量的分箱状态互不干扰
+5. **图表重建**：合并/分裂后箱数变化，完全重建 `FigureWidget` 并替换 UI 中的旧图表，确保子图标题、坐标轴等正确更新
 
-6. **特殊值分箱**：`spc_values` 参数支持将指定值（如 -99999、-99998）从正常数据中分离，单独计算 WOE/IV，在图表中用紫色标识，表格中用浅紫色背景高亮，且不可合并/拆分
+6. **键盘快捷键**：通过 `ipyevents.Event` 监听 `keydown` 事件，绑定到整个 UI 容器（而非独立 VBox），确保事件能被正确捕获
+
+7. **多变量导航**：`BinningWidgetList` 为每个变量维护独立的 `BinningWidget` 实例，通过替换 `_content.children` 实现变量切换，各变量的分箱状态互不干扰
+
+8. **特殊值分箱**：`spc_values` 参数支持将指定值（如 -99999、-99998）从正常数据中分离，单独计算 WOE/IV，在图表中用紫色标识，表格中用浅紫色背景高亮，且不可合并/拆分
 
 ### 图表设计
 
