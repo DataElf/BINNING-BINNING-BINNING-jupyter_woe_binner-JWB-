@@ -65,7 +65,6 @@ pip install -e .
 
 <img width="1116" height="584" alt="ae18e101-1c6b-421b-a888-41a62f3c99d7" src="https://github.com/user-attachments/assets/aaaa4e13-1e5f-4ea3-94b2-ebb6949b588a" />
 
-
 ### 1. 单变量分箱
 
 ```python
